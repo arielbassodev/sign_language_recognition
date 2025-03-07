@@ -32,16 +32,32 @@ class InputEmbeddings(nn.Module):
     self.positional_encoding = PositionalEncoding(1, 31).to('cuda')
     self.layer_norm          = nn.LayerNorm(latent_size).to(torch.float32).to('cuda')
     self.liner_projetction = nn.Linear(150, self.latent_size).to(torch.float32).to('cuda')
+    self.liner_projetction_1 = nn.Linear(42, self.latent_size).to(torch.float32).to('cuda')
+    #self.liner_projetction_2 = nn.Linear(150, self.latent_size).to(torch.float32).to('cuda')
+    self.liner_projetction_3 = nn.Linear(66, self.latent_size).to(torch.float32).to('cuda')
 
-  def forward(self, x):
-    x = einops.rearrange(x, 'b c (h h1) (w w1) -> b c (h h1 w w1)', h1 = self.patche_size, w1 =self.patche_size)
-    p, n, m = x.shape
-    x = self.liner_projetction(x)
+  def forward(self, x1,y1,z1):
+    x1 = einops.rearrange(x1, 'b c (h h1) (w w1) -> b c (h h1 w w1)', h1 = self.patche_size, w1 =self.patche_size)
+    y1 = einops.rearrange(y1, 'b c (h h1) (w w1) -> b c (h h1 w w1)', h1=self.patche_size, w1=self.patche_size)
+    z1 = einops.rearrange(z1, 'b c (h h1) (w w1) -> b c (h h1 w w1)', h1=self.patche_size, w1=self.patche_size)
+    p, n, m = x1.shape
+    x1 = self.liner_projetction_1(x1)
+    y1 = self.liner_projetction_1(y1)
+    z1 = self.liner_projetction_3(z1)
+    #x1 = self.liner_projetction_1(x1)
+    #y1 = self.liner_projetction_1(y1)
+    #z1 = self.liner_projetction_3(z1)
     class_token   = nn.Parameter(torch.randn(p, 1, self.latent_size)).to('cuda')
-    x  = torch.cat((x, class_token), dim=1)
-    x = self.positional_encoding.forward(x)
-#    x  = self.layer_norm(x)
-    return x
+    x1  = torch.cat((x1, class_token), dim=1)
+    x1  = self.positional_encoding.forward(x1)
+    x1  = self.layer_norm(x1)
+    y1  = torch.cat((y1, class_token), dim=1)
+    y1  = self.positional_encoding.forward(y1)
+    y1  = self.layer_norm(y1)
+    z1  = torch.cat((z1, class_token), dim=1)
+    z1  = self.positional_encoding.forward(z1)
+    z1  = self.layer_norm(z1)
+    return x1, y1, z1
 
 class EncoderBlock(nn.Module):
 
@@ -61,12 +77,19 @@ class EncoderBlock(nn.Module):
                       )
     self.layer_norm = nn.LayerNorm(self.laten_size)
 
-  def forward(self,x):
-    x = x.to(torch.float32)
-    x = self.norm(x)
-    x = torch.permute(x, (1, 0, 2))
+  def forward(self,x1,y1,z1):
+    x1 = x1.to(torch.float32)
+    x1 = self.norm(x1)
+    x1 = torch.permute(x1, (1, 0, 2))
+    y1 = y1.to(torch.float32)
+    y1 = self.norm(y1)
+    y1 = torch.permute(y1, (1, 0, 2))
+    z1 = z1.to(torch.float32)
+    z1 = self.norm(z1)
+    z1 = torch.permute(z1, (1, 0, 2))
+    x = x1 + y1 + z1
+    #x = torch.cat((x1,y1,z1), dim=-1)
     attn = self.attn_blck(x,x,x)
-    attn_w = attn[0]
     attn = attn[0]
     attn = x + attn
     attn_2 = self.layer_norm(attn)
@@ -97,11 +120,12 @@ class ViTModel(nn.Module):
       nn.Linear(self.latent_space, self.num_class)
     )
 
-  def forward(self, x):
-    x =x.to(torch.float32)
-    x = self.input_embg(x)
+  def forward(self, x1, y1, z1):
+   # x =x.to(torch.float32)
+    x = 0
+    x1,y1,z1 = self.input_embg(x1,y1,z1)
     for _ in range(1, self.number_block):
-      x =  self.encoder(x)
+      x =  self.encoder(x1,y1,z1)
     x = x[:,0]
-    x =  self.mlp(x)
+    #x =  self.mlp(x)
     return x

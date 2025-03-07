@@ -1,5 +1,5 @@
 from torch.utils.data import random_split
-import loader.load_data as load_data
+import lsfb_transfo.loader.load_data as load_data
 
 
 class DatasetManager():

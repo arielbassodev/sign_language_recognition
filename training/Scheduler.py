@@ -8,24 +8,12 @@ class LinearSchedulerWithWarmup(LRScheduler):
             optimizer: Optimizer,
             n_warmup_steps: int = 20,
             n_drop_steps: int = 80,
-            max_lr: float = 0.002,
+            max_lr: float = 0.02,
             start_lr: float = 0.0,
             end_lr: float = 0.0,
             last_epoch=-1,
     ):
-        """
-        Linear scheduler with warmup.
-        The learning rate increases up to a maximum value during the warm-up, then it decreases.
 
-        Args:
-            optimizer: The optimizer on which to schedule the learning rate.
-            n_warmup_steps: The number of warmup steps.
-            n_drop_steps: The number of steps during which the learning rate drops.
-            max_lr: Maximum value of the learning rate (at the end of the warmup).
-            start_lr: Starting value of the learning rate (at the beginning of the warmup).
-            end_lr: End value of the learning rate (at the end of the drop).
-            last_epoch: The index of the last epoch (default=-1).
-        """
         self.n_warmup_steps = n_warmup_steps
         self.n_drop_steps = n_drop_steps
         self.max_lr = max_lr
@@ -53,6 +41,7 @@ class WarmupLinearScheduler(LambdaLR):
           optimizer, self.lr_lambda, last_epoch=last_epoch
       )
   def lr_lambda(self, step):
+      print("a step", step)
       if step < self.warmup_steps:
           return float(step) / float(max(1, self.warmup_steps))
       return max(
@@ -60,3 +49,16 @@ class WarmupLinearScheduler(LambdaLR):
           float(self.t_total - step)
           / float(max(1.0, self.t_total - self.warmup_steps)),
       )
+
+from torch.optim.lr_scheduler import StepLR
+class UnsupervisedScheduler(StepLR):
+  def __init__(self, optimizer, warmup_steps=10, step_size = 10, t_total=30, gamma= 0.1, last_epoch=-1, lr=0.01):
+      self.warmup_steps = warmup_steps
+      self.t_total = t_total
+      self.lr = lr
+      super(UnsupervisedScheduler, self).__init__(
+          optimizer, gamma=gamma, step_size=step_size,last_epoch=last_epoch
+      )
+  def step(self, epoch=None):
+        print(f"Epoch {epoch}: mise à jour du learning rate")
+        super().step(epoch)
