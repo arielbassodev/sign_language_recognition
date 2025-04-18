@@ -1,6 +1,4 @@
 import sys
-from lsfb_transfo.models import *
-from lsfb_transfo.loader import *
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import torch.nn as nn
@@ -13,7 +11,7 @@ class Reconstitution_2(nn.Module):
         super(Reconstitution_2, self).__init__()
         self.backbone = backbone
         self.mlp      = nn.Sequential(
-            nn.Linear(512, 512),
+            nn.Linear(128, 512),
             nn.ReLU(),
             nn.Linear(512, 128),
         )
@@ -100,7 +98,7 @@ class ReconstitutionModel_2():
         epoch_losses = []
         for epoch in range(self.epoch):
             running_loss = 0.0
-            for id, feature in enumerate(tqdm(self.train_loader)):
+            for id, feature in enumerate(self.train_loader):
                 self.optimizer.zero_grad()
                 left_hand, right_hand, pose = feature[0].to('cuda'), feature[1].to('cuda'), feature[2].to('cuda')
                 #new_left_hand  = self.generate_inputs(left_hand).to(torch.float32)

@@ -1,24 +1,24 @@
 import sys
 
 from torch import device
-
 import BackboneConfig
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from lsfb_transfo.models import  encoder
+
 from lightly.loss import NTXentLoss
 import torch.optim as optim
-from lsfb_transfo.training import Scheduler
+import Scheduler
 from lightning.pytorch import LightningModule
 import Lars
 
 class ContrastiveTraining():
 
-    def __init__(self,model,epochs,train_loader):
+    def __init__(self,model,epochs,train_loader, augmentations):
         self.model = model
         self.criterion = NTXentLoss()
         self.optimizer = optim.AdamW(self.model.parameters(), lr=0.0001, weight_decay=0.01)
         self.epochs = epochs
+        self.augmentation = augmentations
         self.scheduler =  Scheduler.LinearSchedulerWithWarmup(self.optimizer)
         self.train_loader = train_loader
         
@@ -40,11 +40,11 @@ class ContrastiveTraining():
         for epoch in range(self.epochs):
            a = self.optimizer.param_groups[0]['lr']
            self.optimizer.zero_grad()
-           print("actual lr",a)
+        
            running_loss = 0.0
-           for id, feature in enumerate(tqdm(self.train_loader)):
+           for id, feature in enumerate(self.train_loader):
               left_hand, right_hand, pose = feature[0].to('cuda'), feature[1].to('cuda'), feature[2].to('cuda')
-              z1, z2 =  self.model.forward(left_hand, right_hand, pose)
+              z1, z2 =  self.model.forward(left_hand, right_hand, pose,self.augmentation)
               loss = self.criterion(z1, z2)
               loss.backward()
               self.optimizer.step()
@@ -52,7 +52,6 @@ class ContrastiveTraining():
               epoch_loss = running_loss / len(self.train_loader)
            epoch_losses.append(epoch_loss)
            #self.scheduler.step()
-           print("la loss contrastive",epoch_loss)
-        self.plot_loss(epoch_losses)
+        # self.plot_loss(epoch_losses)
         return self.model.backbone
         

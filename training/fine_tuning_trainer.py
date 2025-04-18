@@ -39,7 +39,7 @@ class fine_tuning_trainer():
         epoch_losses = []
         cumultaive_loss = 0
         accuracy = []
-        for feature, target in tqdm(self.train_loader):
+        for feature, target in self.train_loader:
             feature = feature.to('cuda')
             target  = target.to('cuda')
             
@@ -66,7 +66,7 @@ class fine_tuning_trainer():
     def validation(model, test_loader):
         acc      = 0
         model   = model.eval()
-        for feature, target in tqdm(test_loader):
+        for feature, target in test_loader:
             embeddings = model(feature)
             logits = nn.Softmax(dim=1)(embeddings)
             preds  = torch.argmax(logits, dim=1)
@@ -75,7 +75,7 @@ class fine_tuning_trainer():
 @staticmethod
 def number_target(dataloader):
     unique_targets = set()
-    for feature, target in tqdm(dataloader):
+    for feature, target in dataloader:
         unique_targets.update(target.tolist())
     num_class = len(unique_targets)
     return num_class

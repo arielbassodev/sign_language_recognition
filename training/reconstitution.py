@@ -1,6 +1,4 @@
 import sys
-from lsfb_transfo.models import *
-from lsfb_transfo.loader import *
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import torch.nn as nn
@@ -24,7 +22,6 @@ class Reconstitution(nn.Module):
         return x
 
 class ReconstitutionModel():
-
     def projector(self,x):
         x =x.to('cuda')
         mlp = nn.Sequential(
@@ -68,9 +65,9 @@ class ReconstitutionModel():
            y_permuted[i, :num_frames] = y[i, permuted_indices_first[i]]
            z_permuted[i, :num_frames] = z[i, permuted_indices_first[i]]
             # Permuter les dernières frames
-           x_permuted[i, -num_frames:] = x[i, seq_len - num_frames + permuted_indices_last[i]]
-           y_permuted[i, -num_frames:] = y[i, seq_len - num_frames + permuted_indices_last[i]]
-           z_permuted[i, -num_frames:] = z[i, seq_len - num_frames + permuted_indices_last[i]]
+           #x_permuted[i, -num_frames:] = x[i, seq_len - num_frames + permuted_indices_last[i]]
+           #y_permuted[i, -num_frames:] = y[i, seq_len - num_frames + permuted_indices_last[i]]
+           #z_permuted[i, -num_frames:] = z[i, seq_len - num_frames + permuted_indices_last[i]]
 
         return x_permuted.to(torch.float32), y_permuted.to(torch.float32), z_permuted.to(torch.float32)
 
@@ -98,9 +95,11 @@ class ReconstitutionModel():
 
     def train(self):
         epoch_losses = []
+        std = []
         for epoch in range(self.epoch):
             running_loss = 0.0
-            for id, feature in enumerate(tqdm(self.train_loader)):
+            std_item = 0.0
+            for id, feature in enumerate(self.train_loader):
                 self.optimizer.zero_grad()
                 left_hand, right_hand, pose = feature[0].to('cuda'), feature[1].to('cuda'), feature[2].to('cuda')
                 #new_left_hand  = self.generate_inputs(left_hand).to(torch.float32)
@@ -115,20 +114,22 @@ class ReconstitutionModel():
                 z1 = self.model(left_hand.to(torch.float32), right_hand.to(torch.float32),pose.to(torch.float32))
                 zr = self.model(nl.to(torch.float32), nr.to(torch.float32), np.to(torch.float32))
                 z2 = self.model(new_left_hand, new_right_hand,new_pose)
-                #loss1 = self.criterion(z1, z2)
+                loss1 = self.criterion(z1, z2)
                 loss2 = self.criterion(z2, zr)
                 predictor = self.projector(z1)
                 loss3 = self.criterion(predictor, z2.detach())
-                loss =  loss2 + 0.0022*loss3
+                loss =  loss2 + 0.5*loss3 + loss1
                 loss.backward()
                 self.optimizer.step()
                 running_loss += loss.item()
                 epoch_loss = running_loss / len(self.train_loader)
+                std_epoch = std_item / len(self.train_loader)
+                std_item = std_item + torch.std(z1.detach().cpu())
+            std.append(std_epoch)
             epoch_losses.append(epoch_loss)
             # self.scheduler.step()
-            print("la loss", epoch_loss)
+            # print("la loss", epoch_loss)
+            # print("lecart type est", std_epoch)
         self.plot_loss(epoch_losses)
+        self.plot_loss(std)
         return self.model.backbone
-
-
-

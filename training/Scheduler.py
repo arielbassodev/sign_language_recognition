@@ -41,7 +41,7 @@ class WarmupLinearScheduler(LambdaLR):
           optimizer, self.lr_lambda, last_epoch=last_epoch
       )
   def lr_lambda(self, step):
-      print("a step", step)
+    #   print("a step", step)
       if step < self.warmup_steps:
           return float(step) / float(max(1, self.warmup_steps))
       return max(

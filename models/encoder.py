@@ -29,7 +29,7 @@ class InputEmbeddings(nn.Module):
 
     self.class_token         = nn.Parameter(torch.randn(1, 1, self.latent_size))
     #self.positional_encoding = nn.Parameter(torch.rand(1, 1, self.latent_size))
-    self.positional_encoding = PositionalEncoding(1, 31).to('cuda')
+
     self.layer_norm          = nn.LayerNorm(latent_size).to(torch.float32).to('cuda')
     self.liner_projetction = nn.Linear(150, self.latent_size).to(torch.float32).to('cuda')
     self.liner_projetction_1 = nn.Linear(42, self.latent_size).to(torch.float32).to('cuda')
@@ -44,18 +44,21 @@ class InputEmbeddings(nn.Module):
     x1 = self.liner_projetction_1(x1)
     y1 = self.liner_projetction_1(y1)
     z1 = self.liner_projetction_3(z1)
+    self.positional_encoding_x = PositionalEncoding(1, x1.shape[1]+1).to('cuda')
+    self.positional_encoding_y = PositionalEncoding(1, y1.shape[1]+1).to('cuda')
+    self.positional_encoding_z = PositionalEncoding(1, z1.shape[1]+1).to('cuda')
     #x1 = self.liner_projetction_1(x1)
     #y1 = self.liner_projetction_1(y1)
     #z1 = self.liner_projetction_3(z1)
     class_token   = nn.Parameter(torch.randn(p, 1, self.latent_size)).to('cuda')
     x1  = torch.cat((x1, class_token), dim=1)
-    x1  = self.positional_encoding.forward(x1)
+    x1  = self.positional_encoding_x.forward(x1)
     x1  = self.layer_norm(x1)
     y1  = torch.cat((y1, class_token), dim=1)
-    y1  = self.positional_encoding.forward(y1)
+    y1  = self.positional_encoding_y.forward(y1)
     y1  = self.layer_norm(y1)
     z1  = torch.cat((z1, class_token), dim=1)
-    z1  = self.positional_encoding.forward(z1)
+    z1  = self.positional_encoding_z.forward(z1)
     z1  = self.layer_norm(z1)
     return x1, y1, z1
 
@@ -88,7 +91,6 @@ class EncoderBlock(nn.Module):
     z1 = self.norm(z1)
     z1 = torch.permute(z1, (1, 0, 2))
     x = x1 + y1 + z1
-    #x = torch.cat((x1,y1,z1), dim=-1)
     attn = self.attn_blck(x,x,x)
     attn = attn[0]
     attn = x + attn
@@ -127,5 +129,5 @@ class ViTModel(nn.Module):
     for _ in range(1, self.number_block):
       x =  self.encoder(x1,y1,z1)
     x = x[:,0]
-    #x =  self.mlp(x)
+    # x =  self.mlp(x)
     return x
